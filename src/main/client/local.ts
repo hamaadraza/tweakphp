@@ -4,32 +4,36 @@ import * as settings from '../settings'
 import { app } from 'electron'
 import path from 'path'
 import { BaseClient } from './client.base'
+import { base64Encode } from '../utils/base64-encode'
 
 export class LocalClient extends BaseClient {
   constructor(public connection: ConnectionConfig) {
     super(connection)
   }
 
-  execute(code: string): Promise<string> {
+  execute(code: string, loader?: string): Promise<string> {
     return new Promise(resolve => {
       const phpPath = `"${this.connection.php}"`
       const path = `"${this.connection.path}"`
-      const command = `${phpPath} "${getLocalPharClient()}" ${path} execute ${btoa(code)}`
+      const command = `${phpPath} "${getLocalPharClient()}" ${path} execute ${base64Encode(code)} ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`
       exec(command, (_err, stdout) => {
         resolve(stdout)
       })
     })
   }
 
-  async info(): Promise<string> {
+  async info(loader?: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      exec(`"${this.connection.php}" "${getLocalPharClient()}" "${this.connection.path}" info`, (error, stdout) => {
-        if (error) {
-          reject(error.message)
-          return
+      exec(
+        `"${this.connection.php}" "${getLocalPharClient()}" "${this.connection.path}" info ${loader ? `--loader=${base64Encode(loader || '')}` : ''}`,
+        (error, stdout) => {
+          if (error) {
+            reject(error.message)
+            return
+          }
+          resolve(stdout?.replaceAll('\n', ''))
         }
-        resolve(stdout?.replaceAll('\n', ''))
-      })
+      )
     })
   }
 }
